@@ -42,33 +42,15 @@ begin
  t:=p_payload->>'jobType';pkg:=p_payload->>'package';
  price:=case when t='lesson' and pkg='ppt' then 1000000 when t='lesson' and pkg='ppt_word' then 1500000 when t='SKKN' and pkg='full' then 1500000 when t='BCBP' and pkg='word' then 1000000 when t='BCBP' and pkg='word_ppt' then 1500000 else null end;
  if price is null then raise exception 'Gói dịch vụ không hợp lệ';end if;
- foreach required_key in array array['name','zalo','contact','school','province','subject','book','context','requestedDate','language'] loop
-  if coalesce(length(trim(p_payload->>required_key)),0)=0 then raise exception 'Thiếu thông tin: %',required_key;end if;
- end loop;
- if p_payload->>'language' not in ('vi','en') or coalesce(p_payload->>'acceptTerms','false')<>'true' then raise exception 'Cần xác nhận quy định';end if;
- if p_payload->>'requestedDate' !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'Ngày không hợp lệ';end if;
- perform (p_payload->>'requestedDate')::date;
- if coalesce(p_payload->>'studentCount','') !~ '^[0-9]{1,6}$' then raise exception 'Số học sinh phải là số nguyên';end if;
- n:=(p_payload->>'studentCount')::integer;if n<1 or n>100000 then raise exception 'Số học sinh không hợp lệ';end if;
- if t='lesson' then
-  if coalesce(length(trim(p_payload->>'lesson')),0)=0 or coalesce(length(trim(p_payload->>'duration')),0)=0 then raise exception 'Thiếu bài hoặc thời lượng';end if;
- else
-  if coalesce(p_payload->>'level','') not in ('TH','THCS','THPT') then raise exception 'Cấp học không hợp lệ';end if;
-  if coalesce(p_payload->>'helpTopic','false')<>'true' and coalesce(length(trim(p_payload->>'topic')),0)=0 then raise exception 'Thiếu chủ đề';end if;
-  if coalesce(p_payload->>'missingData','false')='true' then
-   if coalesce(length(trim(p_payload->>'missingReason')),0)=0 then raise exception 'Ghi rõ số liệu còn thiếu';end if;
-  else
-   foreach metric in array array['before','after'] loop
-    a:=p_payload->metric;
-    if jsonb_typeof(a)<>'array' or jsonb_array_length(a)<>(case when p_payload->>'level'='TH' then 3 else 4 end) then raise exception 'Thiếu số liệu trước / sau';end if;
-    summed:=0;
-    for f in select value from jsonb_array_elements(a) loop
-     if f::text !~ '^[0-9]{1,6}$' then raise exception 'Số liệu phải là số nguyên không âm';end if;
-     summed:=summed+(f::text)::integer;
-    end loop;
-    if summed<>n then raise exception 'Tổng số liệu phải bằng số học sinh';end if;
-   end loop;
-  end if;
+ if coalesce(nullif(trim(p_payload->>'name'),''),nullif(trim(p_payload->>'zalo'),'')) is null then raise exception 'Vui lòng điền tên hoặc tên Zalo';end if;
+ if coalesce(nullif(trim(p_payload->>'lesson'),''),nullif(trim(p_payload->>'topic'),''),nullif(trim(p_payload->>'notes'),'')) is null and coalesce(p_payload->>'helpTopic','false')<>'true' then raise exception 'Vui lòng mô tả nội dung cần làm';end if;
+ if coalesce(p_payload->>'requestedDate','')<>'' then
+  if p_payload->>'requestedDate' !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'Ngày không hợp lệ';end if;
+  perform (p_payload->>'requestedDate')::date;
+ end if;
+ if coalesce(p_payload->>'studentCount','')<>'' then
+  if p_payload->>'studentCount' !~ '^[0-9]{1,6}$' then raise exception 'Số học sinh phải là số nguyên';end if;
+  n:=(p_payload->>'studentCount')::integer;if n<1 or n>100000 then raise exception 'Số học sinh không hợp lệ';end if;
  end if;
  for f in select value from jsonb_array_elements(p_files) loop
   if coalesce(f->>'path','') !~ ('^'||p_id::text||'/'||p_token||'/'||i::text||'\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|webp)$') then raise exception 'Đường dẫn tệp không hợp lệ';end if;
