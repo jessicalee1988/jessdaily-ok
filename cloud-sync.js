@@ -76,7 +76,7 @@ async function initialize(){try{
  if(!cfg.configured){status('Chưa thiết lập đám mây. Dữ liệu vẫn lưu trên thiết bị.');return}
  if(!window.supabase?.createClient)throw Error('Thiếu thư viện đăng nhập');
  sb=window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
- const adopt=s=>{const previous=session?.user.id;session=s;if(previous!==s?.user.id){epoch++;conflict=null;meta=s?read(s.user.id):null;if(s)queue(0)}controls();if(!s)status('Đã cấu hình kết nối. Đăng nhập để bật đồng bộ tự động.');};
+ const adopt=s=>{const previous=session?.user.id;session=s;if(previous!==s?.user.id){epoch++;conflict=null;meta=s?read(s.user.id):null;if(s)queue(0)}controls();window.dispatchEvent(new CustomEvent('jessica:session',{detail:{client:sb,session:s}}));if(!s)status('Đã cấu hình kết nối. Đăng nhập để bật đồng bộ tự động.');};
  const {data,error}=await sb.auth.getSession();if(error)throw error;adopt(data.session);sb.auth.onAuthStateChange((_event,s)=>adopt(s));
 }catch(e){status('Chưa kết nối được đám mây: '+String(e.message||e))}}
 async function auth(signup){if(!sb)return;try{
@@ -98,3 +98,4 @@ window.addEventListener('DOMContentLoaded',()=>{
  setInterval(()=>{if(document.visibilityState==='visible')queue(0)},30000);initialize();
 });
 })();
+
