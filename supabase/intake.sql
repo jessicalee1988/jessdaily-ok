@@ -60,7 +60,7 @@ begin
   else
    foreach metric in array array['before','after'] loop
     a:=p_payload->metric;
-    if jsonb_typeof(a)<>'array' or jsonb_array_length(a)<>case when p_payload->>'level'='TH' then 3 else 4 end then raise exception 'Thiếu số liệu trước / sau';end if;
+    if jsonb_typeof(a)<>'array' or jsonb_array_length(a)<>(case when p_payload->>'level'='TH' then 3 else 4 end) then raise exception 'Thiếu số liệu trước / sau';end if;
     summed:=0;
     for f in select value from jsonb_array_elements(a) loop
      if f::text !~ '^[0-9]{1,6}$' then raise exception 'Số liệu phải là số nguyên không âm';end if;
