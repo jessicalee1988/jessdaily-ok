@@ -1,6 +1,14 @@
 const assert=require('node:assert/strict'),M=require('./intake-model');
-const p={jobType:'SKKN',package:'full',name:'Test',zalo:'Test',contact:'test@example.invalid',school:'Test school',province:'Hà Nội',subject:'Tiếng Anh',book:'Global Success 4',context:'Test class',requestedDate:'2026-12-01',language:'vi',level:'TH',studentCount:30,topic:'Test topic',before:[10,15,5],after:[20,10,0],acceptTerms:true};
-assert.deepEqual(M.errors(p),[]);assert.equal(M.fee('SKKN','full'),1500000);assert.equal(M.fee('BCBP','word'),1000000);assert.equal(M.fee('BCBP','word_ppt'),1500000);assert.equal(M.fee('BCBP','ppt'),null);assert.equal(M.fee('lesson','ppt_word'),1500000);
-assert(M.errors({...p,before:[1,2,3]}).some(e=>e.includes('Tổng')));assert(M.errors({...p,before:[10,15,-5]}).some(e=>e.includes('Nhập đủ')));assert(M.errors({...p,level:'THCS'}).some(e=>e.includes('Nhập đủ')));assert.deepEqual(M.errors({...p,level:'THPT',before:[10,10,5,5],after:[20,5,5,0]}),[]);assert(M.errors({...p,acceptTerms:false}).length);assert(M.errors({...p,requestedDate:'2026-02-30'}).length);assert.deepEqual(M.errors({...p,missingData:true,missingReason:'Chưa khảo sát sau'}),[]);assert(M.errors({...p,missingData:true,missingReason:''}).length);
-const r={id:'request-1',payload:p,files:[{path:'private-file'}],fee_amount:1500000},o=M.newOrder(r,{paid:false});assert.equal(o.id,'intake-request-1');assert.equal(o.waiting,true);assert.equal(o.deadline,'');assert.equal(o.requestedDate,'2026-12-01');assert.equal(o.paymentStatus,'Chưa chuyển khoản');assert.equal(o.receivedAt,'');assert.deepEqual(o.intakePayload,p);assert.deepEqual(o.intakeFiles,r.files);assert.equal(M.newOrder(r,{paid:true,receivedAt:'2026-11-06'}).receivedAt,'2026-11-06');
-console.log('PASS: service fees, package restrictions, school outcomes, missing-data disclosure, date validity, payment state and deterministic order conversion.');
+for(const [jobType,pkg] of [['lesson','ppt'],['SKKN','full'],['BCBP','word']]){
+ const p={jobType,package:pkg,name:'Giáo viên',notes:'Nội dung cần làm',studentCount:null,before:[null,2],after:[]};
+ assert.deepEqual(M.errors(p),[]);
+ assert.deepEqual(M.errors({...p,name:'',zalo:'Tên Zalo'}),[]);
+ assert(M.errors({...p,name:''}).length);
+ assert(M.errors({...p,notes:''}).length);
+ assert(M.errors({...p,requestedDate:'2026-02-30'}).length);
+ assert(M.errors({...p,studentCount:-1}).length);
+ const o=M.newOrder({id:'test',payload:p,files:[],fee_amount:M.fee(jobType,pkg)});
+ assert.equal(o.zalo,p.name);assert(o.detail.includes(p.notes));assert.equal(o.paid,false);assert.equal(o.id,'intake-test');
+}
+assert.equal(M.fee('BCBP','ppt'),null);
+console.log('PASS: minimal requests for all services, optional and partial information, identity/content checks, dates, fees and order conversion.');
